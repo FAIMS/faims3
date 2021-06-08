@@ -109,11 +109,35 @@ class EventEmitter extends Events.EventEmitter {
     super(opts);
   }
   emit(event: string | symbol, ...args: unknown[]): boolean {
-    console.log(
+    console.debug(
       'EventEmitter.emit',
       event,
       ...args.map(arg => {
-        return log_an_object(arg);
+        if ((arg as {[k: string]: unknown})['local'] !== undefined)
+          return 'LocalDB<>' + (arg as LocalDB<{}>).local.name;
+        if ((arg as {[k: string]: unknown})['name'] !== undefined)
+          return 'PouchDB<>' + (arg as PouchDB.Database<{}>).name;
+        if ((arg as {[k: string]: unknown})['host'] !== undefined) {
+          const arg2 = arg as DataModel.ConnectionInfo;
+          return (
+            'ConnectionInfo: ' +
+            arg2.proto +
+            '://' +
+            arg2.host +
+            ':' +
+            arg2.port +
+            '/' +
+            arg2.db_name
+          );
+        }
+        if ((arg as {[k: string]: unknown})['_id'] !== undefined) {
+          try {
+            return JSON.stringify(arg);
+          } catch (err) {
+            return arg;
+          }
+        }
+        return arg;
       })
     );
     return super.emit(event, ...args);
@@ -464,12 +488,14 @@ class SyncHandler {
   timeout: number;
   timeout_track?: ReturnType<typeof setTimeout>;
   emissions: EmissionsArg;
+  name: string; // For debugging
 
   listener_error?: (...args: any[]) => unknown;
   listener_changed?: (...args: any[]) => unknown;
   listener_paused?: (...args: any[]) => unknown;
 
-  constructor(timeout: number, emissions: EmissionsArg) {
+  constructor(name: string, timeout: number, emissions: EmissionsArg) {
+    this.name = name;
     this.timeout = timeout;
 
     this.emissions = emissions;
@@ -496,9 +522,17 @@ class SyncHandler {
   listen(
     db: PouchDB.Replication.ReplicationEventEmitter<{}, unknown, unknown>
   ) {
+    db.on('active', () => console.log('SyncHandler', this.name, 'active'));
+    db.on('complete', info =>
+      console.log('SyncHandler', this.name, 'complete', info)
+    );
+    db.on('denied', err =>
+      console.log('SyncHandler', this.name, 'denied', err)
+    );
     db.on(
       'paused',
       (this.listener_paused = (err?: {}) => {
+        console.log('SyncHandler', this.name, 'paused', err);
         /*
       This event fires when the replication is paused, either because a live
       replication is waiting for changes, or replication has temporarily
@@ -512,6 +546,7 @@ class SyncHandler {
     db.on(
       'change',
       (this.listener_changed = () => {
+        console.log('SyncHandler', this.name, 'change');
         /*
       This event fires when the replication starts actively processing changes;
       e.g. when it recovers from an error or new changes are available.
@@ -544,6 +579,7 @@ class SyncHandler {
     db.on(
       'error',
       (this.listener_error = err => {
+        console.log('SyncHandler', this.name, 'error', err);
         /*
       This event is fired when the replication is stopped due to an
       unrecoverable failure.
@@ -1092,7 +1128,7 @@ async function process_directory(
   );
 
   const sync_handler = () =>
-    new SyncHandler(DIRECTORY_TIMEOUT, {
+    new SyncHandler(directory_paused.name, DIRECTORY_TIMEOUT, {
       active: async () =>
         initializeEvents.emit(
           'directory_active',
@@ -1238,7 +1274,7 @@ async function process_listing(listing_object: DataModel.ListingsObject) {
   );
 
   const people_sync_handler = () =>
-    new SyncHandler(LISTINGS_TIMEOUT, {
+    new SyncHandler(local_people_db.local.name, LISTINGS_TIMEOUT, {
       active: () => {},
       paused: () => {},
       error: () => {},
@@ -1256,7 +1292,7 @@ async function process_listing(listing_object: DataModel.ListingsObject) {
   );
 
   const project_sync_handler = () =>
-    new SyncHandler(LISTINGS_TIMEOUT, {
+    new SyncHandler(local_projects_db.local.name, LISTINGS_TIMEOUT, {
       active: async () =>
         initializeEvents.emit(
           'listing_active',
@@ -1443,7 +1479,7 @@ async function process_project(
   );
 
   const meta_sync_handler = (meta_db: LocalDB<DataModel.ProjectMetaObject>) =>
-    new SyncHandler(PROJECT_TIMEOUT, {
+    new SyncHandler(data_db_local.local.name, PROJECT_TIMEOUT, {
       active: async () =>
         initializeEvents.emit(
           'project_meta_active',
@@ -1484,7 +1520,7 @@ async function process_project(
   );
 
   const data_sync_handler = (data_db: LocalDB<DataModel.EncodedObservation>) =>
-    new SyncHandler(PROJECT_TIMEOUT, {
+    new SyncHandler(meta_db_local.local.name, PROJECT_TIMEOUT, {
       active: async () =>
         initializeEvents.emit(
           'project_data_active',
