@@ -158,7 +158,7 @@ const StateProvider = (props: any) => {
         })
       )
       .catch(err => {
-        console.log('Could not initialize: ', err);
+        console.error('<StateProvider>.useEffect(initialize)', err);
         dispatch({
           type: ActionType.ADD_ALERT,
           payload: {message: err.message, severity: 'error'},

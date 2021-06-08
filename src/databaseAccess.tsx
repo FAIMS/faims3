@@ -131,7 +131,13 @@ export function listenObservationsList(
   const runCallback = () =>
     getObservationList(project_id)
       .then(callback)
-      .catch(err => console.error('Uncaught observation list error'));
+      .catch(err =>
+        console.error(
+          'listenObservationsList',
+          project_id,
+          'Uncaught observation list error'
+        )
+      );
 
   const listener_func = (listing: unknown, active: ActiveDoc) => {
     if (active._id === project_id) runCallback();

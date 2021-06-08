@@ -333,7 +333,11 @@ class ObservationForm extends React.Component<
         if (!this.props.revision_id !== null) {
           doc._rev = this.props.revision_id;
         }
-        console.log(doc);
+        console.log(
+          '<FAIMSForm>.save.userid =>',
+          JSON.stringify(this.props.observation_id),
+          doc
+        );
         return doc;
       })
       .then(doc => {

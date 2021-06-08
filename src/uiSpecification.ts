@@ -43,7 +43,7 @@ export async function getUiSpecForProject(
       start_view: encUIInfo.start_view,
     };
   } catch (err) {
-    console.warn(err);
+    console.warn('getUiSpecForProject', project_id, err);
     throw Error('failed to find ui specification');
   }
 }
@@ -68,7 +68,12 @@ export async function setUiSpecForProject(
   try {
     return await projdb.put(encUIInfo);
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'setUiSpecForProject',
+      projdb.name,
+      JSON.stringify(uiInfo),
+      err
+    );
     throw Error('failed to set ui specification');
   }
 }

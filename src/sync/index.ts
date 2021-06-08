@@ -109,7 +109,7 @@ class EventEmitter extends Events.EventEmitter {
     super(opts);
   }
   emit(event: string | symbol, ...args: unknown[]): boolean {
-    console.debug(event, args);
+    console.debug('EventEmitter.emit', event, args);
     return super.emit(event, ...args);
   }
 }
@@ -353,6 +353,8 @@ export function setSyncingProject(active_id: string, syncing: boolean) {
     return; //Nothing to do, already same value
   }
 
+  console.log('setSyncingProject', active_id, syncing);
+
   const data_db = data_dbs[active_id];
   data_db.is_sync = syncing;
 
@@ -428,7 +430,7 @@ export function getDataDB(
   if (data_dbs[active_id] !== undefined) {
     return data_dbs[active_id].local;
   } else {
-    console.warn(`Failed to look up ${active_id}`);
+    console.warn(`getDataDB Failed to look up ${active_id}`);
     throw 'Projects not initialized yet';
   }
 }
@@ -439,7 +441,7 @@ export function getProjectDB(
   if (metadata_dbs[active_id] !== undefined) {
     return metadata_dbs[active_id].local;
   } else {
-    console.warn(`Failed to look up ${active_id}`);
+    console.warn(`getProjectDB Failed to look up ${active_id}`);
     throw 'Projects not initialized yet';
   }
 }

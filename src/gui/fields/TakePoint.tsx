@@ -36,7 +36,7 @@ export class TakePoint extends React.Component<FieldProps> {
       };
       this.props.form.setFieldValue(this.props.field.name, pos);
     } catch (err) {
-      console.error(err);
+      console.error('TakePoint', err);
       this.props.form.setFieldError(this.props.field.name, err.message);
     }
   }

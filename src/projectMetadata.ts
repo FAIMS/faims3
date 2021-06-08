@@ -35,7 +35,7 @@ export async function getProjectMetadata(
     );
     return doc.metadata;
   } catch (err) {
-    console.warn(err);
+    console.warn('getProjectMetadata', project_id, metadata_key, err);
     throw Error('failed to find metadata');
   }
 }
@@ -64,7 +64,7 @@ export async function setProjectMetadata(
 
     await projdb.put(doc);
   } catch (err) {
-    console.warn(err);
+    console.warn('setProjectMetadata', project_id, metadata_key, err);
     throw Error('failed to set metadata');
   }
 }

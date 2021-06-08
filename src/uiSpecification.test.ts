@@ -49,7 +49,7 @@ async function cleanProjectDBS() {
         await db.destroy();
         //await db.close();
       } catch (err) {
-        console.error(err);
+        console.error('cleanProjectDBs', err);
       }
     }
   }

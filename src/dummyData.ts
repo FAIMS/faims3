@@ -738,7 +738,12 @@ export async function setupExampleProjectMetadata(
   projname: string,
   meta_db: PouchDB.Database<ProjectMetaObject>
 ) {
-  console.log(await setUiSpecForProject(meta_db, example_ui_specs[projname]));
+  console.log(
+    'setupExampleProjectMetadata',
+    projname,
+    meta_db.name,
+    await setUiSpecForProject(meta_db, example_ui_specs[projname])
+  );
   for (const key in example_project_metadata) {
     await setProjectMetadata(projname, key, example_project_metadata[key]);
   }

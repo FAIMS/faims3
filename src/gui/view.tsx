@@ -39,7 +39,11 @@ export class ViewComponent extends React.Component<ViewProps, ViewState> {
   componentDidMount() {}
 
   save(values: any) {
-    console.log(values);
+    console.log(
+      '<ViewComponent>.save',
+      JSON.stringify(this.props.viewList),
+      values
+    );
   }
 
   getForm() {

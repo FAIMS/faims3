@@ -245,18 +245,29 @@ export class FAIMSForm extends React.Component<FormProps, FormState> {
         if (this.props.observation) {
           doc._rev = this.props.observation._rev;
         }
-        console.log(doc);
+        console.log(
+          '<FAIMSForm>.save.userid =>',
+          JSON.stringify(this.props.observation),
+          doc
+        );
         return doc;
       })
       .then(doc => {
         return upsertFAIMSData(this.props.activeProjectID, doc);
       })
       .then(result => {
-        console.debug(result);
+        console.debug(
+          '<FAIMSForm>.save.result =>',
+          JSON.stringify(this.props.observation),
+          result
+        );
       })
       .catch(err => {
-        console.warn(err);
-        console.error('Failed to save data');
+        console.error(
+          '<FAIMSForm>.save.catch =>',
+          JSON.stringify(this.props.observation),
+          err
+        );
       });
   }
 
@@ -464,7 +475,12 @@ export class FAIMSForm extends React.Component<FormProps, FormState> {
             onSubmit={(values, {setSubmitting}) => {
               setTimeout(() => {
                 setSubmitting(false);
-                console.log(JSON.stringify(values, null, 2));
+                console.log(
+                  '<FAIMSForm>.render.<Formik>.onSubmit(',
+                  values,
+                  ')',
+                  JSON.stringify(values, null, 2)
+                );
                 this.save(values);
               }, 500);
             }}

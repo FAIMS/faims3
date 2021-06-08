@@ -124,7 +124,7 @@ async function getLatestRevision(
     const doc = await datadb.get(docid);
     return doc._rev;
   } catch (err) {
-    console.debug(err);
+    console.error('getLatestRevision', project_id, err);
     return undefined;
   }
 }
@@ -138,7 +138,7 @@ export async function upsertFAIMSData(project_id: ProjectID, doc: Observation) {
     const revision = await getLatestRevision(project_id, doc.observation_id);
     return await datadb.put(convertFromFormToDB(doc, revision));
   } catch (err) {
-    console.warn(err);
+    console.warn('upsertFAIMSData', project_id, JSON.stringify(doc), err);
     throw Error('failed to save data');
   }
 }
@@ -155,7 +155,7 @@ export async function lookupFAIMSDataID(
     if (err.status === 404 && err.reason === 'deleted') {
       return null;
     }
-    console.warn(err);
+    console.warn('lookupFAIMSDataID', project_id, observation_id, err);
     throw Error(`failed to find data with id ${observation_id}`);
   }
 }
@@ -184,7 +184,7 @@ export async function listFAIMSData(
     });
     return retval;
   } catch (err) {
-    console.warn(err);
+    console.warn('listFAIMSData', project_id, err);
     throw Error('failed to get data');
   }
 }
@@ -209,7 +209,12 @@ export async function listFAIMSObservationRevisions(
     }
     return nice_revs;
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'listFAIMSObservationRevisions',
+      project_id,
+      observation_id,
+      err
+    );
     throw Error(`failed to list data for id ${observation_id}`);
   }
 }
@@ -227,7 +232,7 @@ export async function listFAIMSProjectRevisions(
     }
     return revmap;
   } catch (err) {
-    console.warn(err);
+    console.warn('listFAIMSProjectRevisions', project_id, err);
     throw Error('failed to list data in project');
   }
 }
@@ -242,7 +247,7 @@ export async function deleteFAIMSDataForID(
     doc.deleted = true;
     return await datadb.put(doc);
   } catch (err) {
-    console.warn(err);
+    console.warn('deleteFAIMSDataForID', project_id, observation_id, err);
     throw Error('failed to delete data with id');
   }
 }
@@ -257,7 +262,7 @@ export async function undeleteFAIMSDataForID(
     doc.deleted = false;
     return await datadb.put(doc);
   } catch (err) {
-    console.warn(err);
+    console.warn('undeleteFAIMSDataForID', project_id, observation_id, err);
     throw Error('failed to undelete data with id');
   }
 }

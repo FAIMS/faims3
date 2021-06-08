@@ -101,7 +101,7 @@ export async function lookupFAIMSType(faimsType: string, context: TypeContext) {
     typeCache.set(faimsType, refVal);
     return refVal;
   } catch (err) {
-    console.warn(err);
+    console.warn('lookupFAIMSType', faimsType, context, err);
     throw Error('failed to look up type');
   }
 }
@@ -132,7 +132,7 @@ export async function lookupFAIMSConstant(
     constantCache.set(faimsConst, refVal);
     return refVal;
   } catch (err) {
-    console.warn(err);
+    console.warn('lookupFAIMSConstant', faimsConst, context, err);
     throw Error('failed to look up constant');
   }
 }
@@ -196,7 +196,7 @@ async function lookupProjectReference(
     }
     throw Error('Unsupported option, implementation needed');
   } catch (err) {
-    console.warn(err);
+    console.warn('lookupProjectReference', faimsRef, context, specOpt, err);
     throw Error('failed to look up reference');
   }
 }
@@ -256,7 +256,13 @@ export async function upsertFAIMSType(
   try {
     validatedInfo = await validateTypeInfo(typeInfo);
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'upsertFAIMSType validateTypeInfo',
+      qualname,
+      typeInfo,
+      context,
+      err
+    );
     throw Error('invalid type information');
   }
 
@@ -265,7 +271,13 @@ export async function upsertFAIMSType(
     specdoc = await getOrCreateSpecDoc(project_id, parsedName['namespace']);
     specdoc.types[parsedName['name']] = validatedInfo;
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'upsertFAIMSType getOrCreateSpecDoc',
+      qualname,
+      typeInfo,
+      context,
+      err
+    );
     throw Error('failed to get document');
   }
 
@@ -273,7 +285,13 @@ export async function upsertFAIMSType(
   try {
     return projdb.put(specdoc);
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'upsertFAIMSType projdb.put',
+      qualname,
+      typeInfo,
+      context,
+      err
+    );
     throw Error('Failed to add type');
   }
 }
@@ -294,7 +312,13 @@ export async function upsertFAIMSConstant(
   try {
     validatedInfo = await validateConstInfo(constInfo);
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'upsertFAIMSConstant validateConstInfo',
+      qualname,
+      constInfo,
+      context,
+      err
+    );
     throw Error('invalid type information');
   }
 
@@ -305,7 +329,13 @@ export async function upsertFAIMSConstant(
   try {
     return projdb.put(specdoc);
   } catch (err) {
-    console.warn(err);
+    console.warn(
+      'upsertFAIMSConstant projdb.put',
+      qualname,
+      constInfo,
+      context,
+      err
+    );
     throw Error('Failed to add constant');
   }
 }
