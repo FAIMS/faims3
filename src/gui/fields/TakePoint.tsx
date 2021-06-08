@@ -29,7 +29,7 @@ export class TakePoint extends React.Component<FieldProps> {
   async takePoint() {
     try {
       const coordinates = await Geolocation.getCurrentPosition();
-      console.debug('Take point coord', coordinates);
+      console.log('Take point coord', coordinates);
       const pos = {
         latitude: coordinates.coords.latitude,
         longitude: coordinates.coords.longitude,

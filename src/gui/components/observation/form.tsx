@@ -344,7 +344,7 @@ class ObservationForm extends React.Component<
         return upsertFAIMSData(this.props.project_id, doc);
       })
       .then(result => {
-        console.debug(result);
+        console.log(result);
         const message = this.props.is_fresh
           ? 'Observation successfully created'
           : 'Observation successfully updated';
@@ -431,12 +431,12 @@ class ObservationForm extends React.Component<
       this.staging = true;
       // These may occur after the user switches tabs.
       if (this.loadedStagedData === null) {
-        console.debug('Attempt to save whilst UI is loading something else');
+        console.log('Attempt to save whilst UI is loading something else');
         return;
       }
       const loadedStagedData = this.loadedStagedData;
       if (this.state.currentView === null) {
-        console.debug('Attempt to save whilst UI is loading something else');
+        console.log('Attempt to save whilst UI is loading something else');
         return;
       }
 
@@ -516,7 +516,7 @@ class ObservationForm extends React.Component<
     try {
       Component = getComponentByName(namespace, name);
     } catch (err) {
-      // console.debug(err);
+      // console.log(err);
       // console.warn(`Failed to load component ${namespace}::${name}`);
       return undefined;
     }

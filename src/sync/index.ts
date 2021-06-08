@@ -109,7 +109,13 @@ class EventEmitter extends Events.EventEmitter {
     super(opts);
   }
   emit(event: string | symbol, ...args: unknown[]): boolean {
-    console.debug('EventEmitter.emit', event, args);
+    console.log(
+      'EventEmitter.emit',
+      event,
+      ...args.map(arg => {
+        return log_an_object(arg);
+      })
+    );
     return super.emit(event, ...args);
   }
 }
@@ -1051,7 +1057,7 @@ async function process_directory(
       await directory_db.local.allDocs()
     ).rows.map(row => row.id);
 
-    console.debug(
+    console.log(
       `All the listing ids found are ${all_listing_ids_in_this_directory}`
     );
 
@@ -1063,7 +1069,7 @@ async function process_directory(
       })
     ).docs;
 
-    console.debug(
+    console.log(
       `The active listing ids are ${active_listings_in_this_directory}`
     );
 
@@ -1152,7 +1158,7 @@ function process_listings(listings: Set<string>, allow_nonexistant: boolean) {
 
 async function process_listing(listing_object: DataModel.ListingsObject) {
   const listing_id = listing_object._id;
-  console.debug(`Processing listing id ${listing_id}`);
+  console.log(`Processing listing id ${listing_id}`);
 
   const projects_db_id = listing_object['projects_db']
     ? listing_id
@@ -1192,7 +1198,7 @@ async function process_listing(listing_object: DataModel.ListingsObject) {
     ).rows
       .map(row => row.id)
       .filter(id => !id.startsWith('_design/'));
-    console.debug(
+    console.log(
       `All projects in listing ${listing_id} are`,
       all_project_ids_in_this_listing
     );
@@ -1208,7 +1214,7 @@ async function process_listing(listing_object: DataModel.ListingsObject) {
         },
       })
     ).docs;
-    console.debug(
+    console.log(
       `Active projects in listing ${listing_id} are`,
       active_projects_in_this_listing
     );
@@ -1311,7 +1317,7 @@ async function autoactivate_projects(
       await activate_project(listing_id, project_id, null, null);
     } catch (err) {
       const active_id = listing_id + POUCH_SEPARATOR + project_id;
-      console.debug('Unable to autoactivate', active_id);
+      console.log('Unable to autoactivate', active_id);
     }
   }
 }
@@ -1332,7 +1338,7 @@ async function activate_project(
   const active_id = listing_id + POUCH_SEPARATOR + project_id;
   try {
     await active_db.get(active_id);
-    console.debug('Have already activated', active_id);
+    console.log('Have already activated', active_id);
   } catch (err) {
     if (err.status === 404) {
       // TODO: work out a better way to do this
@@ -1388,7 +1394,7 @@ async function process_project(
    * metadata/data databases.
    */
   const active_id = active_project._id;
-  console.debug(`Processing project ${active_id}`);
+  console.log(`Processing project ${active_id}`);
 
   const [, meta_db_local] = ensure_local_db(
     'metadata',
