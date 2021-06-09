@@ -94,7 +94,7 @@ export default function Observation() {
         history.push(ROUTES.PROJECT + project_id);
       })
       .catch(err => {
-        console.error(
+        console.warn(
           'handleDelete',
           'Could not delete observation: ',
           observation_id,

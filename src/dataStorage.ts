@@ -124,7 +124,7 @@ async function getLatestRevision(
     const doc = await datadb.get(docid);
     return doc._rev;
   } catch (err) {
-    console.error('getLatestRevision', project_id, err);
+    console.warn('getLatestRevision', project_id, err);
     return undefined;
   }
 }
