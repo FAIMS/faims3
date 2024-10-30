@@ -1,5 +1,6 @@
 interface TransparentButtonProps {
   onClick: () => void;
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }
 
@@ -13,12 +14,14 @@ interface TransparentButtonProps {
  */
 export default function TransparentButton({
   onClick,
+  style,
   children,
 }: TransparentButtonProps) {
   return (
     <div
       onClick={onClick}
       style={{
+        ...style,
         display: 'flex',
         gap: '8px',
         alignItems: 'center',
