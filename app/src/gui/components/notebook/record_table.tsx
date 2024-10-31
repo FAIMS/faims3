@@ -42,7 +42,9 @@ import * as ROUTES from '../../../constants/routes';
 import {
   ProjectID,
   ProjectUIViewsets,
+  Record,
   RecordMetadata,
+  getFullRecordData,
   getMetadataForAllRecords,
   getRecordsWithRegex,
 } from '@faims3/data-model';
@@ -50,6 +52,11 @@ import {NotebookDataGridToolbar} from './datagrid_toolbar';
 import RecordDelete from './delete';
 import getLocalDate from '../../fields/LocalDate';
 import {logError} from '../../../logging';
+import ProgressBar from '../progress-bar';
+import {percentComplete, requiredFields} from '../../../lib/form-utils';
+import {getUiSpecForProject} from '../../../uiSpecification';
+import {useQuery} from '@tanstack/react-query';
+import {useGetUISpec} from '../../../lib/queries';
 
 type RecordsTableProps = {
   project_id: ProjectID;
@@ -71,6 +78,8 @@ type RecordsBrowseTableProps = {
 
 function RecordsTable(props: RecordsTableProps) {
   const {project_id, maxRows, rows, loading} = props;
+
+  const {data: uiSpec} = useGetUISpec(project_id);
 
   // default for mobileView is on (collapsed table)
   const [mobileViewSwitchValue, setMobileViewSwitchValue] =
@@ -292,6 +301,16 @@ function RecordsTable(props: RecordsTableProps) {
                 {params.row.conflicts === true && (
                   <Alert severity={'warning'}>Record has conflicts</Alert>
                 )}
+                <ProgressBar
+                  percentage={
+                    uiSpec && params.row.record
+                      ? percentComplete(
+                          requiredFields(uiSpec.fields),
+                          params.row.record.data
+                        )
+                      : 0
+                  }
+                />
               </Box>
             );
           },
@@ -431,29 +450,45 @@ function RecordsTable(props: RecordsTableProps) {
   );
 }
 
+interface RecordMetaDataExtended extends RecordMetadata {
+  record: Record;
+}
+
 export function RecordsBrowseTable(props: RecordsBrowseTableProps) {
   const [query, setQuery] = React.useState('');
-  const [pouchData, setPouchData] = React.useState(
-    undefined as RecordMetadata[] | undefined
-  );
+  const [pouchData, setPouchData] = React.useState<
+    RecordMetaDataExtended[] | undefined
+  >(undefined);
 
   useEffect(() => {
     const getData = async () => {
       try {
-        if (query.length === 0) {
-          const ma = await getMetadataForAllRecords(
-            props.project_id,
-            props.filter_deleted
+        const records = (
+          query.length === 0
+            ? await getMetadataForAllRecords(
+                props.project_id,
+                props.filter_deleted
+              )
+            : await getRecordsWithRegex(
+                props.project_id,
+                query,
+                props.filter_deleted
+              )
+        ) as RecordMetaDataExtended[];
+
+        for (const record of records) {
+          const data = await getFullRecordData(
+            record.project_id,
+            record.record_id,
+            record.revision_id
           );
-          setPouchData(ma);
-        } else {
-          const ra = await getRecordsWithRegex(
-            props.project_id,
-            query,
-            props.filter_deleted
-          );
-          setPouchData(ra);
+
+          if (!data) continue;
+
+          record.record = data;
         }
+
+        setPouchData(records);
       } catch (err) {
         logError(err); // unable to load records
         setPouchData(undefined);
