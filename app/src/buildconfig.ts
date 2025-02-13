@@ -391,6 +391,30 @@ function ignoreTokenExp(): boolean {
   return ignoreTokenExp.toUpperCase() === 'TRUE';
 }
 
+/**
+ * Map source configuration.  Define the map source
+ * (see src/gui/components/map/tile_source.ts for options)
+ * and the map key if required.
+ */
+
+function get_map_source(): string {
+  const map_source = import.meta.env.VITE_MAP_SOURCE;
+  return map_source || 'osm';
+}
+
+function get_map_key(): string {
+  const map_key = import.meta.env.VITE_MAP_SOURCE_KEY;
+  return map_key || '';
+}
+
+function offline_maps(): boolean {
+  const offline_maps = import.meta.env.VITE_OFFLINE_MAPS === 'true';
+  const map_source = get_map_source();
+  console.log('OFFLINE_MAPS', offline_maps);
+  // OSM does not allow bulk downloads so we can't enable offline maps
+  return (offline_maps && map_source !== 'osm') || false;
+}
+
 // this should disappear once we have listing activation set up
 export const AUTOACTIVATE_LISTINGS = true;
 export const CONDUCTOR_URLS = get_conductor_urls();
@@ -416,3 +440,6 @@ export const SHOW_RECORD_SUMMARY_COUNTS = showRecordCounts();
 export const TOKEN_REFRESH_INTERVAL_MS = tokenRefreshIntervalMs();
 export const TOKEN_REFRESH_WINDOW_MS = tokenRefreshWindowMs();
 export const IGNORE_TOKEN_EXP = ignoreTokenExp();
+export const OFFLINE_MAPS = offline_maps();
+export const MAP_SOURCE_KEY = get_map_key();
+export const MAP_SOURCE = get_map_source();

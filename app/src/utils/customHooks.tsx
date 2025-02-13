@@ -198,7 +198,6 @@ export function useQueryParams<T extends Record<string, any>>(config: {
       let hasUpdates = false;
 
       // Check each configured parameter
-
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       Object.entries(config).forEach(([_, paramConfig]) => {
         const value = searchParams.get(paramConfig.key);
@@ -314,7 +313,7 @@ const filterOutDrafts = (rows: RecordMetadata[]) => {
 };
 
 /**
- * Filters records to include only thosse created by the active user.
+ * Filters records to include only those created by the active user.
  *
  * @param rows - The dataset of records.
  * @param username - The active user's username.

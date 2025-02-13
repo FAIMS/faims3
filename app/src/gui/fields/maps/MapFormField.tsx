@@ -67,8 +67,9 @@ export function MapFormField({
   // Derive the features from the field value (this forces re-render anyway)
   const drawnFeatures = form.values[field.name] ?? {};
 
+  console.log('map field props', props);
   // Default zoom level
-  const zoom = props.zoom ?? 14;
+  const zoom = typeof props.zoom === 'number' ? props.zoom : 14;
 
   // default to point if not specified
   const featureType = props.featureType ?? 'Point';
@@ -108,7 +109,11 @@ export function MapFormField({
       if (!gpsCenterRequested.current) {
         // Mark that we've requested already
         gpsCenterRequested.current = true;
-        Geolocation.getCurrentPosition()
+        Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        })
           .then(result => {
             // Only store the center result if we actually need it
             if (center === undefined) {

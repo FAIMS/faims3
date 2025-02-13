@@ -17,29 +17,26 @@
  * Description:
  *   Internals of map generation for MapFormField
  */
-import React, {useState, useRef, useCallback} from 'react';
+import {useCallback, useMemo, useRef, useState} from 'react';
 
 // openlayers
+import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
+import MapIcon from '@mui/icons-material/LocationOn';
+import Button, {ButtonProps} from '@mui/material/Button';
 import Map from 'ol/Map';
 import View from 'ol/View';
-import TileLayer from 'ol/layer/Tile';
-import WebGLTileLayer from 'ol/layer/WebGLTile';
-import GeoTIFF from 'ol/source/GeoTIFF';
+import Zoom from 'ol/control/Zoom';
+import GeoJSON from 'ol/format/GeoJSON';
+import {Draw, Modify} from 'ol/interaction';
 import VectorLayer from 'ol/layer/Vector';
+import WebGLTileLayer from 'ol/layer/WebGLTile';
+import {transform} from 'ol/proj';
+import {register} from 'ol/proj/proj4';
+import GeoTIFF from 'ol/source/GeoTIFF';
 import VectorSource from 'ol/source/Vector';
 import {Circle as CircleStyle, Fill, Stroke, Style} from 'ol/style';
-import {Draw, Modify} from 'ol/interaction';
-import OSM from 'ol/source/OSM';
-import {transform} from 'ol/proj';
 import proj4 from 'proj4';
-import {register} from 'ol/proj/proj4';
-import Button, {ButtonProps} from '@mui/material/Button';
-import CloseIcon from '@mui/icons-material/Close';
-import GeoJSON from 'ol/format/GeoJSON';
-import Zoom from 'ol/control/Zoom';
-import MapIcon from '@mui/icons-material/LocationOn';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckCircleIcon from '@mui/icons-material/Check';
 
 // define some EPSG codes - these are for two sample images
 // TODO: we need to have a better way to include a useful set or allow
@@ -83,11 +80,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import Feature from 'ol/Feature';
-import {Geometry} from 'ol/geom';
-import {createCenterControl} from '../../components/map/center-control';
 import {useNotification} from '../../../context/popup';
+import {createCenterControl} from '../../components/map/center-control';
 import {theme} from '../../themes';
+import {ImageTileStore} from '../../components/map/tile-source';
 
 const styles = {
   mapContainer: {
@@ -101,14 +97,16 @@ const styles = {
 function MapWrapper(props: MapProps) {
   const [mapOpen, setMapOpen] = useState<boolean>(false);
   const [map, setMap] = useState<Map | undefined>();
-  const [featuresLayer, setFeaturesLayer] =
-    useState<VectorLayer<Feature<Geometry>>>();
+  const [featuresLayer, setFeaturesLayer] = useState<VectorLayer>();
   const defaultMapProjection = 'EPSG:3857';
   const geoJson = new GeoJSON();
+  const tileStore = useMemo(() => new ImageTileStore(), []);
   const [showConfirmSave, setShowConfirmSave] = useState<boolean>(false);
 
   // notifications
   const notify = useNotification();
+
+  console.log('map props', props);
 
   // create state ref that can be accessed in OpenLayers onclick callback function
   //  https://stackoverflow.com/a/60643670
@@ -146,11 +144,12 @@ function MapWrapper(props: MapProps) {
           view = new View(viewOptions);
         }
       } else {
-        tileLayer = new TileLayer({source: new OSM()});
+        tileLayer = tileStore.getTileLayer();
         view = new View({
           projection: props.projection || defaultMapProjection,
           center: center,
           zoom: props.zoom,
+          maxZoom: 20,
         });
       }
 
