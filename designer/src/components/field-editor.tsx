@@ -52,6 +52,7 @@ import {TakePhotoFieldEditor} from './Fields/TakePhotoField';
 import {TemplatedStringFieldEditor} from './Fields/TemplatedStringFieldEditor';
 import {TextFieldEditor} from './Fields/TextFieldEditor';
 import {useState, useMemo} from 'react';
+import {isFieldUsedInCondition} from './condition';
 
 type FieldEditorProps = {
   fieldName: string;
@@ -89,6 +90,41 @@ export const FieldEditor = ({
 
   const fieldComponent = field['component-name'];
 
+  const allFields = useAppSelector(
+    state => state.notebook['ui-specification'].fields
+  );
+  const allFviews = useAppSelector(
+    state => state.notebook['ui-specification'].fviews
+  );
+
+  const [deleteWarningOpen, setDeleteWarningOpen] = useState(false);
+  const [conditionsAffected, setConditionsAffected] = useState<string[]>([]);
+
+  const deleteField = (evt: React.SyntheticEvent) => {
+    evt.stopPropagation();
+
+    const usage = findFieldUsage(fieldName, allFields, allFviews);
+
+    if (usage.length > 0) {
+      setConditionsAffected(usage);
+      setDeleteWarningOpen(true);
+    } else {
+      dispatch({
+        type: 'ui-specification/fieldDeleted',
+        payload: {fieldName, viewId},
+      });
+    }
+  };
+
+  const confirmDelete = () => {
+    dispatch({
+      type: 'ui-specification/fieldDeleted',
+      payload: {fieldName, viewId},
+    });
+
+    setDeleteWarningOpen(false);
+  };
+
   const getFieldLabel = () => {
     return (
       (field['component-parameters'] && field['component-parameters'].label) ||
@@ -97,6 +133,7 @@ export const FieldEditor = ({
       field['component-parameters'].name
     );
   };
+
   const label = getFieldLabel();
 
   const moveFieldDown = (event: React.SyntheticEvent) => {
@@ -112,14 +149,6 @@ export const FieldEditor = ({
     dispatch({
       type: 'ui-specification/fieldMoved',
       payload: {fieldName, viewId, direction: 'up'},
-    });
-  };
-
-  const deleteField = (event: React.SyntheticEvent) => {
-    event.stopPropagation();
-    dispatch({
-      type: 'ui-specification/fieldDeleted',
-      payload: {fieldName, viewId},
     });
   };
 
@@ -147,6 +176,48 @@ export const FieldEditor = ({
       moveFieldCallback(targetViewId);
       handleCloseMoveDialog();
     }
+  };
+
+  /**
+   * Finds where a field is used in conditions or templated string fields
+   */
+  const findFieldUsage = (
+    fieldName: string,
+    allFields: Record<string, any>,
+    allFviews: Record<string, any>
+  ): string[] => {
+    const affected: string[] = [];
+
+    // ✅ Check section-level conditions
+    for (const sectionId in allFviews) {
+      const condition = allFviews[sectionId].condition;
+      if (isFieldUsedInCondition(condition, fieldName)) {
+        affected.push(`Section: ${allFviews[sectionId].label}`);
+      }
+    }
+
+    // ✅ Check field-level conditions
+    for (const fId in allFields) {
+      const condition = allFields[fId].condition;
+      if (isFieldUsedInCondition(condition, fieldName)) {
+        const label = allFields[fId]['component-parameters']?.label ?? fId;
+        affected.push(`Field Condition: ${label}`);
+      }
+    }
+
+    // ✅ Check for Templated String Fields using the deleted field
+    for (const fId in allFields) {
+      if (allFields[fId]['component-name'] === 'TemplatedStringField') {
+        const template = allFields[fId]['component-parameters']?.template || '';
+
+        if (template.includes(`{{${fieldName}}}`)) {
+          const label = allFields[fId]['component-parameters']?.label ?? fId;
+          affected.push(`Templated String: ${label} (uses '{{${fieldName}}}')`);
+        }
+      }
+    }
+
+    return affected;
   };
 
   // memoize the form value
@@ -226,7 +297,6 @@ export const FieldEditor = ({
         <Grid container rowGap={1} alignItems={'center'}>
           <Grid item xs={12} sm={8}>
             <Stack direction="column" spacing={1} pr={{xs: 0, sm: 2}}>
-              {/* Field Title */}
               <Typography
                 variant="subtitle2"
                 sx={{
@@ -243,7 +313,6 @@ export const FieldEditor = ({
                 {label}
               </Typography>
 
-              {/* Chips Below Title (Tighter Spacing) */}
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 <Chip
                   label={fieldComponent}
@@ -263,7 +332,6 @@ export const FieldEditor = ({
                 )}
               </Stack>
 
-              {/* Helper Text (More Spacing from Chips) */}
               {field['component-parameters'].helperText && (
                 <Typography
                   variant="body2"
@@ -271,7 +339,7 @@ export const FieldEditor = ({
                   fontWeight={400}
                   fontStyle="italic"
                   sx={{
-                    mt: 1.5, // Added extra spacing here
+                    mt: 1.5,
                     display: '-webkit-box',
                     WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical',
@@ -331,6 +399,37 @@ export const FieldEditor = ({
             </Stack>
           </Grid>
         </Grid>
+        <Dialog
+          open={deleteWarningOpen}
+          onClose={() => setDeleteWarningOpen(false)}
+        >
+          <DialogTitle>Field Deletion Warning</DialogTitle>
+          <DialogContent>
+            <p>
+              This field is referenced in the following conditions. Deleting it
+              will invalidate them:
+            </p>
+            <ul>
+              {conditionsAffected.map((condition, index) => (
+                <li key={index}>{condition}</li>
+              ))}
+            </ul>
+            <p>Are you sure you want to proceed?</p>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={e => {
+                e.stopPropagation();
+                setDeleteWarningOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmDelete} color="error">
+              Delete Anyway
+            </Button>
+          </DialogActions>
+        </Dialog>
       </AccordionSummary>
 
       <Dialog

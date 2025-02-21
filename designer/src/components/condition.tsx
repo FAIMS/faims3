@@ -78,6 +78,28 @@ const getFieldLabel = (f: FieldType) => {
   );
 };
 
+// Recursively checks if a field is used in a single condition
+export function isFieldUsedInCondition(
+  condition: ConditionType | null | undefined,
+  fieldName: string
+): boolean {
+  if (!condition) return false;
+
+  const {operator, field, conditions} = condition;
+
+  // Base case
+  if (field === fieldName) {
+    return true;
+  }
+
+  // If it's an AND/OR group, check subconditions
+  if ((operator === 'and' || operator === 'or') && conditions) {
+    return conditions.some(sub => isFieldUsedInCondition(sub, fieldName));
+  }
+
+  return false;
+}
+
 export const ConditionModal = (props: ConditionProps & {label: string}) => {
   const [open, setOpen] = useState(false);
 
