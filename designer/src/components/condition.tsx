@@ -370,12 +370,12 @@ const BooleanConditionControl = (props: ConditionProps) => {
   else return <div></div>;
 };
 
-const FieldConditionControl = (props: ConditionProps) => {
+export const FieldConditionControl = (props: ConditionProps) => {
   const initialValue = useMemo(
     () =>
       props.initial || {
         field: '',
-        operator: '',
+        operator: 'equal',
         value: '',
       },
     [props]
@@ -396,11 +396,30 @@ const FieldConditionControl = (props: ConditionProps) => {
     selectFields = selectFields.filter(f => f !== props.field);
   } else if (props.view) {
     const view = views[props.view];
-    selectFields = selectFields.filter(f => view.fields.indexOf(f) < 0);
+    selectFields = selectFields.filter(f => !view.fields.indexOf(f));
   }
 
+  const targetFieldDef = condition.field ? allFields[condition.field] : null;
+
   const updateField = (value: string) => {
-    updateCondition({...condition, field: value});
+    const newFieldDef = allFields[value] ?? null;
+    const isPredefinedOptionsField =
+      newFieldDef && isPredefinedOptions(newFieldDef);
+
+    let firstOption = '';
+    if (isPredefinedOptionsField) {
+      const options =
+        newFieldDef?.['component-parameters']?.ElementProps?.options ?? [];
+      if (options.length > 0) {
+        firstOption = options[0].value;
+      }
+    }
+
+    updateCondition({
+      field: value,
+      operator: isPredefinedOptionsField ? 'equal' : condition.operator,
+      value: firstOption,
+    });
   };
 
   const updateOperator = (value: string) => {
@@ -423,11 +442,124 @@ const FieldConditionControl = (props: ConditionProps) => {
     }
   };
 
-  const addCondition = () => {
+  const getFieldLabel = (f: FieldType) =>
+    f?.['component-parameters']?.InputLabelProps?.label ||
+    f?.['component-parameters']?.name ||
+    '<unlabeled>';
+
+  /* Checks if a field has predefined options */
+  const isPredefinedOptions = (fieldDef: FieldType | null): boolean => {
+    if (!fieldDef) return false;
+    return ['Select', 'RadioGroup', 'MultiSelect', 'Checkbox'].includes(
+      fieldDef['component-name']
+    );
+  };
+
+  /* Filter the allowed operators based on field type */
+  const getAllowedOperators = (fieldDef: FieldType | null) => {
+    return isPredefinedOptions(fieldDef)
+      ? ['equal', 'not-equal']
+      : ['equal', 'not-equal', 'greater', 'less', 'contains', 'regex'];
+  };
+
+  const renderValueEditor = (fieldDef: FieldType) => {
+    const cName = fieldDef['component-name'];
+    const params = fieldDef['component-parameters'] || {};
+    const possibleOptions = params.ElementProps?.options || [];
+
+    switch (cName) {
+      case 'Select':
+      case 'RadioGroup':
+        return (
+          <FormControl sx={{minWidth: 200}}>
+            <InputLabel>Value</InputLabel>
+            <Select
+              label="Value"
+              value={condition.value ?? ''}
+              onChange={e => updateValue(e.target.value)}
+            >
+              {possibleOptions.map((opt: any) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        );
+
+      case 'MultiSelect':
+        return (
+          <FormControl sx={{minWidth: 200}}>
+            <InputLabel>Value</InputLabel>
+            <Select
+              multiple
+              label="Value"
+              value={Array.isArray(condition.value) ? condition.value : []}
+              onChange={e => updateValue(e.target.value)}
+            >
+              {possibleOptions.map((opt: any) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        );
+
+      case 'Checkbox':
+        return (
+          <FormControl sx={{minWidth: 200}}>
+            <InputLabel>Value</InputLabel>
+            <Select
+              label="Value"
+              value={String(condition.value ?? '')}
+              onChange={e => updateValue(e.target.value === 'true')}
+            >
+              <MenuItem value="false">False</MenuItem>
+              <MenuItem value="true">True</MenuItem>
+            </Select>
+          </FormControl>
+        );
+
+      default:
+        return (
+          <TextField
+            variant="outlined"
+            label="Value"
+            value={condition.value ?? ''}
+            onChange={e => updateValue(e.target.value)}
+            sx={{minWidth: 200}}
+          />
+        );
+    }
+  };
+
+  const isValueValidForField = (): boolean => {
+    if (!targetFieldDef) return true;
+    const cName = targetFieldDef['component-name'];
+    const params = targetFieldDef['component-parameters'] || {};
+    const possibleOptions = params.ElementProps?.options || [];
+
+    if (cName === 'Select' || cName === 'RadioGroup') {
+      return possibleOptions.some((o: any) => o.value === condition.value);
+    }
+    if (cName === 'MultiSelect') {
+      if (!Array.isArray(condition.value)) return false;
+      return (condition.value as any[]).every((val: any) =>
+        possibleOptions.some((o: any) => o.value === val)
+      );
+    }
+    if (cName === 'Checkbox') {
+      return condition.value === true || condition.value === false;
+    }
+    return true;
+  };
+
+  const handleSplitCondition = () => {
     if (props.onChange) {
       props.onChange({
         operator: 'and',
-        conditions: [condition, EMPTY_FIELD_CONDITION],
+        conditions: [condition, {field: '', operator: 'equal', value: ''}],
       });
     }
   };
@@ -438,29 +570,29 @@ const FieldConditionControl = (props: ConditionProps) => {
     }
   };
 
+  const valueMismatch = !isValueValidForField();
+  const allowedOperators = getAllowedOperators(targetFieldDef);
+
   return (
     <Grid container>
       <Stack
         direction="row"
         spacing={2}
         divider={<Divider orientation="vertical" flexItem />}
-        justifyContent="space-evenly"
       >
-        <FormControl sx={{minWidth: 200}} data-testid="field-input">
-          <InputLabel id="field">Field</InputLabel>
+        <FormControl sx={{minWidth: 200}}>
+          <InputLabel>Field</InputLabel>
           <Select
             labelId="field"
-            label="Field Name"
+            label="Field"
             onChange={e => updateField(e.target.value)}
-            value={condition.field}
+            value={condition.field ?? ''}
           >
-            {selectFields.map(fieldId => {
-              return (
-                <MenuItem key={fieldId} value={fieldId}>
-                  {getFieldLabel(allFields[fieldId])}
-                </MenuItem>
-              );
-            })}
+            {selectFields.map(fieldId => (
+              <MenuItem key={fieldId} value={fieldId}>
+                {getFieldLabel(allFields[fieldId])}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
         <FormControl sx={{minWidth: 200}} data-testid="operator-input">
@@ -471,27 +603,24 @@ const FieldConditionControl = (props: ConditionProps) => {
             onChange={e => updateOperator(e.target.value)}
             value={condition.operator}
           >
-            {[...allOperators.keys()].map((op: string) => {
-              return (
-                <MenuItem key={op} value={op}>
-                  {allOperators.get(op)}
-                </MenuItem>
-              );
-            })}
+            {allowedOperators.map(op => (
+              <MenuItem key={op} value={op}>
+                {op}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
-        <FormControl sx={{minWidth: 200}} data-testid="value-input">
-          <TextField
-            variant="outlined"
-            label="Value"
-            value={condition.value}
-            onChange={e => updateValue(e.target.value)}
-          />
-        </FormControl>
+
+        {targetFieldDef ? (
+          renderValueEditor(targetFieldDef)
+        ) : (
+          <TextField label="Value" sx={{minWidth: 200}} />
+        )}
+
         <Tooltip describeChild title="Make this an 'and' or 'or' condition">
           <IconButton
             color="primary"
-            onClick={addCondition}
+            onClick={handleSplitCondition}
             data-testid="split-button"
           >
             <SplitscreenIcon />
@@ -507,6 +636,7 @@ const FieldConditionControl = (props: ConditionProps) => {
           </IconButton>
         </Tooltip>
       </Stack>
+      {valueMismatch && <div style={{color: 'red'}}>Invalid value!</div>}
     </Grid>
   );
 };
