@@ -32,6 +32,7 @@ import {
   PostCreateNotebookResponse,
   PostRandomRecordsInputSchema,
   PostRandomRecordsResponse,
+  ProjectUIModel,
   PutUpdateNotebookInputSchema,
   PutUpdateNotebookResponse,
 } from '@faims3/data-model';
@@ -48,6 +49,7 @@ import {
   getNotebookMetadata,
   getNotebooks,
   getNotebookUISpec,
+  getProjectUIModel,
   getRolesForNotebook,
   streamNotebookFilesAsZip,
   streamNotebookRecordsAsCSV,
@@ -203,7 +205,11 @@ api.get(
     const metadata = await getNotebookMetadata(project_id);
     const uiSpec = await getNotebookUISpec(project_id);
     if (metadata && uiSpec) {
-      res.json({metadata, 'ui-specification': uiSpec});
+      res.json({
+        metadata,
+        // silly business
+        'ui-specification': uiSpec as unknown as Record<string, unknown>,
+      });
     } else {
       throw new Exceptions.ItemNotFoundException('Notebook not found.');
     }
@@ -246,11 +252,15 @@ api.get(
       throw new Exceptions.UnauthorizedException();
     }
     const tokenContent = generateTokenContentsForUser(req.user);
+    const uiSpecification = (await getProjectUIModel(
+      req.params.id
+    )) as ProjectUIModel;
     const records = await getRecordsWithRegex(
       tokenContent,
       req.params.id,
       '.*',
-      true
+      true,
+      uiSpecification
     );
     if (records) {
       const filenames: string[] = [];

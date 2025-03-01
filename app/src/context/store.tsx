@@ -18,33 +18,48 @@ import {
 } from 'redux-persist';
 import {PersistGate} from 'redux-persist/integration/react';
 import storage from 'redux-persist/lib/storage';
+import {TOKEN_REFRESH_INTERVAL_MS} from '../buildconfig';
 import LoadingApp from '../gui/components/loadingApp';
-import {set_sync_status_callbacks} from '../sync/connection';
 import {initialize} from '../sync/initialize';
-import {getSyncStatusCallbacks} from '../utils/status';
 import authReducer, {
   refreshAllUsers,
   refreshIsAuthenticated,
   selectIsAuthenticated,
 } from './slices/authSlice';
+import projectsReducer from './slices/projectSlice';
 import syncReducer, {addAlert, setInitialized} from './slices/syncSlice';
-import {TOKEN_REFRESH_INTERVAL_MS} from '../buildconfig';
+import {databaseService} from './slices/helpers/databaseService';
+import {logError} from '../logging';
+import {getLocalStateDB} from './slices/helpers/databaseHelpers';
 
 // Configure persistence for the auth slice
-const persistConfig = {key: 'auth', storage};
-const persistedAuthReducer = persistReducer(persistConfig, authReducer);
+const authPersistConfig = {key: 'auth', storage};
+const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
+
+// Configure persistence for the projects slice
+const projectsPersistConfig = {
+  key: 'projects',
+  storage,
+  blacklist: ['isInitialised'],
+};
+
+const persistedProjectsReducer = persistReducer(
+  projectsPersistConfig,
+  projectsReducer
+);
 
 // Configure the store
 export const store = configureStore({
   reducer: {
     // auth slice (persisted)
     auth: persistedAuthReducer,
+    // projects slice (persisted)
+    projects: persistedProjectsReducer,
     // sync slice
     sync: syncReducer,
   },
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
-      // TODO fix this
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
@@ -167,7 +182,12 @@ export const InitialiseGate: React.FC<{children: React.ReactNode}> = ({
   const mounted = useRef(false);
 
   // Initialised state
-  const isInitialized = useAppSelector(state => state.sync.isInitialized);
+  const syncStoreInitialised = useAppSelector(
+    state => state.sync.isInitialised
+  );
+  const projectStoreInitialised = useAppSelector(
+    state => state.projects.isInitialised
+  );
 
   useEffect(() => {
     // Don't initialise twice
@@ -197,16 +217,9 @@ export const InitialiseGate: React.FC<{children: React.ReactNode}> = ({
 
     // Run initialisation logic
     init();
-
-    // And setup callbacks for sync operations (only done once)
-    set_sync_status_callbacks(getSyncStatusCallbacks(dispatch));
-
-    return () => {
-      mounted.current = false;
-    };
   }, []);
 
-  if (!isInitialized) {
+  if (!syncStoreInitialised || !projectStoreInitialised) {
     return <LoadingComponent />;
   }
 
@@ -233,4 +246,35 @@ export const clearReduxAndLocalStorage = async () => {
   await persistor.purge();
   // then also clear all local storage
   localStorage.clear();
+};
+
+export const wipeAllDatabases = async () => {
+  // cast and get state
+  const state = store.getState() as RootState;
+  for (const server of Object.values(state.projects.servers)) {
+    for (const project of Object.values(server.projects)) {
+      if (project.isActivated && project.database) {
+        // Local DB should be wiped
+        const localDb = databaseService.getLocalDatabase(
+          project.database.localDbId
+        );
+        // Destroy
+        await localDb?.destroy();
+        // Then remove
+        localDb &&
+          databaseService.closeAndRemoveLocalDatabase(
+            project.database.localDbId
+          );
+      }
+    }
+  }
+
+  const dbsToWipe = [databaseService.getDraftDatabase(), getLocalStateDB()];
+  for (const db of dbsToWipe) {
+    try {
+      console.debug(await db.destroy());
+    } catch (err) {
+      logError(err);
+    }
+  }
 };
